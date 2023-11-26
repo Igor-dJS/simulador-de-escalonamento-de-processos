@@ -189,7 +189,7 @@ void imprimirFila(FILA* fila) {
 
 void imprimirTabelaIO(int tabela[][4], int linhas) {
     for (int i = 0; i < linhas; i++) {
-        for (int j = 0; j < 3; j++) {
+        for (int j = 0; j < 4; j++) {
             printf("%d\t", tabela[i][j]);
         }
         printf("\n");
@@ -322,7 +322,7 @@ int main(){
     	
     	// Verifica se chegou algum processo novo e se sim o coloca no fim da fila de alta prioridade
     	printf("----------CHEGADAS----------\n");
-    	while(processo!= NULL && processo->criacao <= instanteAtual){
+    	while(processo != NULL && processo->criacao <= instanteAtual){
     		PCB* novoProcesso = (PCB *) malloc(sizeof(PCB));
     		
     		novoProcesso->ant = NULL;
@@ -338,11 +338,12 @@ int main(){
 			printf("Novo processo P%d criado no instante %d\n\n", novoProcesso->pid, novoProcesso->criacao);
 			processo = processo->prox;
 		}
-		
-		// Verificar se algum IO terminou e colocar na fila adequada
+
+		// Verificar se algum IO terminou e coloca na fila adequada
     	for(int i = 0; i < QTDE_PROC; i++){
-			if(tabela_IO[i][0] != 0 && tabela_IO[i][3] >= (instanteAtual - tempoDecorrido) && tabela_IO[i][3] <= instanteAtual) {
+			if(tabela_IO[i][0] != 0 && tabela_IO[i][3] > (instanteAtual - tempoDecorrido) && tabela_IO[i][3] <= instanteAtual) {
 				int pidProcIO = tabela_IO[i][0];
+				
 				PCB* processoDeIO = retirar_fila_IO(filaIO, pidProcIO);
 				
 				char tipoIO = processoDeIO->io->tipo;
@@ -360,13 +361,14 @@ int main(){
 		}
 				
 		// Executa processo
+		printf("----------EXECUCAO----------\n");
 		temProcessoExecutar = (filaAltaPrioridade->qtde) + (filaBaixaPrioridade->qtde);
-		
 		
 		if(!temProcessoExecutar){
 			tempoDecorrido = 1;
+			printf("Sem processo pra executar\n");
 		}else{
-			printf("----------EXECUCAO----------\n");
+			
 			PCB* processoExecutar = seleciona_processo(filaAltaPrioridade, filaBaixaPrioridade, instanteAtual);
 			
 			int inicioIO = processoExecutar->io->inicio;
@@ -454,12 +456,10 @@ int main(){
     printf("\n\nTABELA IO\n");
     
     imprimirTabelaIO(tabela_IO, QTDE_PROC);
-    
-    /*
+
     free(filaAltaPrioridade);
-	free(filaBaixaPrioridade;
+	free(filaBaixaPrioridade);
 	free(filaIO);
-	*/
 	
 	return 0;
 }
