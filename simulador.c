@@ -341,7 +341,7 @@ int main(){
 		
 		// Verificar se algum IO terminou e colocar na fila adequada
     	for(int i = 0; i < QTDE_PROC; i++){
-			if(tabela_IO[i][0] != 0 && tabela_IO[i][3] >= instanteAtual && tabela_IO[i][3] >= (instanteAtual + tempoDecorrido)){
+			if(tabela_IO[i][0] != 0 && tabela_IO[i][3] >= (instanteAtual - tempoDecorrido) && tabela_IO[i][3] <= instanteAtual) {
 				int pidProcIO = tabela_IO[i][0];
 				PCB* processoDeIO = retirar_fila_IO(filaIO, pidProcIO);
 				
