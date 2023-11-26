@@ -12,6 +12,9 @@
 #define TEMPO_FITA 6 		// Tempo de E/S para Fita Magnï¿½tica
 #define TEMPO_IMPRESSORA 4 	// Tempo de E/S para Impressora
 #define PROB_IO 4			// Probabilidade com que um processo solicita IO na criaï¿½ï¿½o (1/freq)
+#define IO_DISCO 0
+#define IO_FITA 1
+#define IO_IMPRESSORA 2
 
 typedef struct {
 	char tipo;				// Tipo de IO que vai ser solicitado (D, F, I) ou zero se nï¿½o tem tipo
@@ -184,7 +187,7 @@ void imprimirFila(FILA* fila) {
     printf("\n");
 }
 
-void imprimirTabelaIO(int tabela[][3], int linhas) {
+void imprimirTabelaIO(int tabela[][4], int linhas) {
     for (int i = 0; i < linhas; i++) {
         for (int j = 0; j < 3; j++) {
             printf("%d\t", tabela[i][j]);
@@ -193,6 +196,72 @@ void imprimirTabelaIO(int tabela[][3], int linhas) {
     }
 }
 
+PCB* seleciona_processo(FILA* filaAlta, FILA* filaBaixa, int instanteAtual){
+	if(filaAlta->qtde > 0){
+		PCB* processoExecutar = retira_processo_fila(filaAlta);
+				
+		printf("---Infos processo---\n");
+		printf("Criacao = %d\n", processoExecutar->criacao);
+		printf("Tempo_serv = %d\n", processoExecutar->tempo_serv);
+		printf("PID = %d\n", processoExecutar->pid);
+		printf("--------------------------\n\n");
+				
+				
+				
+				
+		printf("Processo da fila de Alta Prioridade P%d comecou a executar em %d\n", processoExecutar->pid, instanteAtual);
+		return processoExecutar;
+	}else{
+		PCB* processoExecutar = retira_processo_fila(filaBaixa);
+				
+		printf("---Infos processo---\n");
+		printf("Criacao = %d\n", processoExecutar->criacao);
+		printf("Tempo_serv = %d\n", processoExecutar->tempo_serv);
+		printf("PID = %d\n", processoExecutar->pid);
+		printf("--------------------------\n\n");
+				
+				
+				
+				
+		printf("Processo da fila de Baixa Prioridade P%d comecou a executar em %d\n", processoExecutar->pid, instanteAtual);
+		return processoExecutar;
+	}
+}
+
+PCB* retirar_fila_IO(FILA* filaIO, int pid){
+		if (filaIO->inicio == NULL) {
+        return NULL; // Fila vazia
+    }
+	
+    PCB* temp = filaIO->inicio;
+    
+    while(temp->pid != pid){
+    	temp = temp->ant;
+    	
+    	if(temp == NULL){
+    		printf("N achou processo na fila de IO pra retirar");
+    		return NULL;
+		}
+	}
+	
+	if(filaIO->qtde > 1){	
+		if(temp->pid == filaIO->inicio->pid){
+			filaIO->inicio = temp->ant;
+		}else if(temp->pid == filaIO->fim->pid){
+			filaIO->fim = temp->prox;
+		}
+	}else{
+		filaIO->inicio = NULL;
+		filaIO->fim = NULL;
+	}
+    
+    temp->ant = NULL;
+    temp->prox = NULL;
+
+    filaIO->qtde--;
+
+    return temp;
+}
 
 FILA* filaAltaPrioridade;
 FILA* filaBaixaPrioridade;
@@ -204,7 +273,7 @@ int main(){
 	qtdeProcessos = QTDE_PROC;
 	int processosTerminados = 0;
 	
-	int tabela_IO[QTDE_PROC][3] = {{0}};
+	int tabela_IO[QTDE_PROC][4] = {{0}};
 	int tabela_processos[QTDE_PROC][2];
 	
     // Algoritmo RR com Feedback
@@ -240,7 +309,7 @@ int main(){
     
     // Inicio simulacao
     int instanteAtual = 0;
-    int temProcessoExecutar; // Var booleana para verificar se há processo pra executar
+    int temProcessoExecutar; // Var booleana para verificar se hï¿½ processo pra executar
     int tempoDecorrido = 0;
     processo = listaProcessos->fim;
 
@@ -252,7 +321,8 @@ int main(){
     	instanteAtual += tempoDecorrido;
     	
     	// Verifica se chegou algum processo novo e se sim o coloca no fim da fila de alta prioridade
-    	if(processo->criacao <= instanteAtual){
+    	printf("----------CHEGADAS----------\n");
+    	while(processo!= NULL && processo->criacao <= instanteAtual){
     		PCB* novoProcesso = (PCB *) malloc(sizeof(PCB));
     		
     		novoProcesso->ant = NULL;
@@ -270,8 +340,25 @@ int main(){
 		}
 		
 		// Verificar se algum IO terminou e colocar na fila adequada
-		
-		
+    	for(int i = 0; i < QTDE_PROC; i++){
+			if(tabela_IO[i][0] != 0 && tabela_IO[i][3] >= instanteAtual && tabela_IO[i][3] >= (instanteAtual + tempoDecorrido)){
+				int pidProcIO = tabela_IO[i][0];
+				PCB* processoDeIO = retirar_fila_IO(filaIO, pidProcIO);
+				
+				char tipoIO = processoDeIO->io->tipo;
+				if(tipoIO == 'D'){
+					printf("Processo P%d voltando de IO do tipo DISCO no instante %d para fila de Baixa Prioridade\n", tabela_IO[i][0], tabela_IO[i][3]);
+					adiciona_processo_fila(filaBaixaPrioridade, processoDeIO);
+				}else if(tipoIO == 'F'){
+					printf("Processo P%d voltando de IO do tipo FITA no instante %d para fila de Alta Prioridade\n", tabela_IO[i][0], tabela_IO[i][3]);
+					adiciona_processo_fila(filaAltaPrioridade, processoDeIO);
+				}else if(tipoIO == 'I'){
+					printf("Processo P%d voltando de IO do tipo IMPRESSORA no instante %d para fila de Alta Prioridade\n", tabela_IO[i][0], tabela_IO[i][3]);
+					adiciona_processo_fila(filaAltaPrioridade, processoDeIO);
+				}
+			}
+		}
+				
 		// Executa processo
 		temProcessoExecutar = (filaAltaPrioridade->qtde) + (filaBaixaPrioridade->qtde);
 		
@@ -279,72 +366,89 @@ int main(){
 		if(!temProcessoExecutar){
 			tempoDecorrido = 1;
 		}else{
-			// verificar se tem IO
-			if(filaAltaPrioridade->qtde > 0){
-				PCB* processoExecutar = retira_processo_fila(filaAltaPrioridade);
-				
-				printf("---Infos processo---\n");
-				printf("Criacao = %d\n", processoExecutar->criacao);
-				printf("Tempo_serv = %d\n", processoExecutar->tempo_serv);
-				printf("PID = %d\n", processoExecutar->pid);
-				printf("--------------------------\n\n");
-				
-				
-				
-				
-				printf("Processo P%d comecou a executar em %d\n", processoExecutar->pid, instanteAtual);
-				int inicioIO = processoExecutar->io->inicio;
-				if(inicioIO != -1){
-					if(inicioIO - QUANTUM <= 0){
-						tempoDecorrido = inicioIO;
-						processoExecutar->tempo_serv -= tempoDecorrido;
-						processoExecutar->io->inicio = -1;
-						printf("Processo executou por %d\n", tempoDecorrido);
-						
-						adiciona_processo_fila(filaIO, processoExecutar);
-						tabela_IO[processoExecutar->pid - 1][0] = processoExecutar->pid;
-						tabela_IO[processoExecutar->pid - 1][1] = instanteAtual + tempoDecorrido;
-						tabela_IO[processoExecutar->pid - 1][2] = (instanteAtual + tempoDecorrido) + processoExecutar->io->duracao;
-						
-						printf("Processo pediu solicitacao de IO do tipo %c no instante %d\n\n", processoExecutar->io->tipo, (instanteAtual + tempoDecorrido));
-					}
-					else{
-						processoExecutar->io->inicio -= QUANTUM; // adptar inicio
-						processoExecutar->tempo_serv -= QUANTUM; // quanto ainda falta de temp_serv
-						tempoDecorrido = QUANTUM;
-						printf("Processo executou por %d\n", tempoDecorrido);
-						
-						adiciona_processo_fila(filaBaixaPrioridade, processoExecutar);
-						printf("Processo %d sofreu preempcao no instante %d\n\n", processoExecutar->pid, (instanteAtual + tempoDecorrido));
-					}
-				}else{
-					if(processoExecutar->tempo_serv - QUANTUM <= 0){
-						tempoDecorrido = processoExecutar->tempo_serv;
-						processoExecutar->tempo_serv = 0;
-						printf("Processo executou por %d\n", tempoDecorrido);
+			printf("----------EXECUCAO----------\n");
+			PCB* processoExecutar = seleciona_processo(filaAltaPrioridade, filaBaixaPrioridade, instanteAtual);
+			
+			int inicioIO = processoExecutar->io->inicio;
+			if(inicioIO != -1){
+				// Quando tem IO e chega no IO
+				if(inicioIO - QUANTUM <= 0){
+					tempoDecorrido = inicioIO;
+					processoExecutar->tempo_serv -= tempoDecorrido;
+					processoExecutar->io->inicio = -1;
+					printf("Processo executou por %d\n", tempoDecorrido);
 					
-						printf("Processo %d terminou a execucao no instante %d\n\n", processoExecutar->pid, (instanteAtual + tempoDecorrido));
-					}
-					else{
-						processoExecutar->tempo_serv -= QUANTUM;
-						tempoDecorrido = QUANTUM;
-						printf("Processo executou por %d\n", tempoDecorrido);
+					adiciona_processo_fila(filaIO, processoExecutar);
+					tabela_IO[processoExecutar->pid - 1][0] = processoExecutar->pid;		
 					
-						adiciona_processo_fila(filaBaixaPrioridade, processoExecutar);
-						printf("Processo %d sofreu preempcao no instante %d\n\n", processoExecutar->pid, (instanteAtual + tempoDecorrido));
+					char tipoIO = processoExecutar->io->tipo;
+					if(tipoIO == 'D'){
+						tabela_IO[processoExecutar->pid - 1][1] = IO_DISCO;
+					}else if(tipoIO == 'F'){
+						tabela_IO[processoExecutar->pid - 1][1] = IO_FITA;
+					}else if(tipoIO == 'I'){
+						tabela_IO[processoExecutar->pid - 1][1] = IO_IMPRESSORA;
+					}
+					
+					int maxValRetorno = -1;
+					int tipoIO_num = tabela_IO[processoExecutar->pid - 1][1];
+					for(int i = 0; i < QTDE_PROC; i++){
+						if(tabela_IO[i][0] != 0 && tabela_IO[i][1] == tipoIO_num && tabela_IO[i][3] >= (instanteAtual + tempoDecorrido)){
+							maxValRetorno = tabela_IO[i][3];
+						}
+					}
+					
+					if(maxValRetorno == -1){
+						tabela_IO[processoExecutar->pid - 1][2] = instanteAtual + tempoDecorrido;
+						tabela_IO[processoExecutar->pid - 1][3] = (instanteAtual + tempoDecorrido) + processoExecutar->io->duracao;
+					}else{
+						tabela_IO[processoExecutar->pid - 1][2] = maxValRetorno;
+						tabela_IO[processoExecutar->pid - 1][3] = maxValRetorno + processoExecutar->io->duracao;
+					}
+					
+					printf("Processo pediu solicitacao de IO do tipo %c no instante %d\n\n", processoExecutar->io->tipo, (instanteAtual + tempoDecorrido));
+					if(maxValRetorno != -1){
+						printf("Há processo na fila de IO, entao o IO comecara em %d", maxValRetorno);
 					}
 				}
+				else{
+					// Quando tem IO, mas ainda n cehgou no IO
+					processoExecutar->io->inicio -= QUANTUM; // adptar inicio
+					processoExecutar->tempo_serv -= QUANTUM; // quanto ainda falta de temp_serv
+					tempoDecorrido = QUANTUM;
+					printf("Processo executou por %d\n", tempoDecorrido);
+					
+					adiciona_processo_fila(filaBaixaPrioridade, processoExecutar);
+					printf("Processo %d sofreu preempcao no instante %d\n\n", processoExecutar->pid, (instanteAtual + tempoDecorrido));
+				}
 			}else{
-				tempoDecorrido = 1;
-				printf("ELSE\n\n");
+				// Quando termina de executar
+				if(processoExecutar->tempo_serv - QUANTUM <= 0){
+					tempoDecorrido = processoExecutar->tempo_serv;
+					processoExecutar->tempo_serv = 0;
+					printf("Processo executou por %d\n", tempoDecorrido);
+				
+					printf("Processo %d terminou a execucao no instante %d\n\n", processoExecutar->pid, (instanteAtual + tempoDecorrido));
+					processosTerminados++;
+				}
+				else{
+					// Quando n termina de executar
+					processoExecutar->tempo_serv -= QUANTUM;
+					tempoDecorrido = QUANTUM;
+					printf("Processo executou por %d\n", tempoDecorrido);
+				
+					adiciona_processo_fila(filaBaixaPrioridade, processoExecutar);
+					printf("Processo %d sofreu preempcao no instante %d\n\n", processoExecutar->pid, (instanteAtual + tempoDecorrido));
+				}
 			}
 		}
+    	
+    	
     	
 		processosTerminados++;
 	} // Fim while
     
     imprimirFila(filaAltaPrioridade);
-    printf("%d", filaAltaPrioridade->qtde);
     printf("\n\nTABELA IO\n");
     
     imprimirTabelaIO(tabela_IO, QTDE_PROC);

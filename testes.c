@@ -3,5 +3,10 @@
 int i;
 	
 int main(){
-	printf("%d", i);
+	char c = 'F';
+	
+	if(c == 'F'){
+		printf("verdadeiro", i);
+	}
+
 }
