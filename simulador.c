@@ -394,7 +394,9 @@ int main(){
 					int tipoIO_num = tabela_IO[processoExecutar->pid - 1][1];
 					for(int i = 0; i < QTDE_PROC; i++){
 						if(tabela_IO[i][0] != 0 && tabela_IO[i][1] == tipoIO_num && tabela_IO[i][3] >= (instanteAtual + tempoDecorrido)){
-							maxValRetorno = tabela_IO[i][3];
+							if(tabela_IO[i][3] > maxValRetorno){
+								maxValRetorno = tabela_IO[i][3];
+							}
 						}
 					}
 					
@@ -445,7 +447,7 @@ int main(){
     	
     	
     	
-		processosTerminados++;
+		
 	} // Fim while
     
     imprimirFila(filaAltaPrioridade);
